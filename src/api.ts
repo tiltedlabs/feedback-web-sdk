@@ -1,7 +1,7 @@
 import { MOBILE_FEEDBACK_PATH, TILTEDOS_API_BASE_URL } from './config'
 import type { WebFeedbackPriority } from './priorities'
 
-export interface SubmitWebFeedbackParams {
+interface SubmitWebFeedbackParams {
   readonly apiKey: string
   readonly description: string
   readonly apiBaseUrl?: string
@@ -9,6 +9,8 @@ export interface SubmitWebFeedbackParams {
   readonly title?: string
   readonly appVersion?: string
   readonly buildNumber?: string
+  /** Métadonnées injectées dans la description côté serveur (user id, email, etc.). */
+  readonly context?: Record<string, string>
   /** Images (captures, uploads). Envoyées dans `attachments`. */
   readonly images?: readonly File[]
   /** Première image aussi dans `screenshot` (mobile legacy). Désactivé par défaut côté web. */
@@ -16,7 +18,7 @@ export interface SubmitWebFeedbackParams {
   readonly video?: File | null
 }
 
-export interface SubmitWebFeedbackResult {
+interface SubmitWebFeedbackResult {
   readonly task: unknown
   readonly attachment: unknown
   readonly attachments?: readonly unknown[]
@@ -66,6 +68,9 @@ export async function submitWebFeedback(
   }
   if (params.buildNumber) {
     form.append('buildNumber', params.buildNumber)
+  }
+  if (params.context && Object.keys(params.context).length > 0) {
+    form.append('context', JSON.stringify(params.context))
   }
 
   const mirrorScreenshot =

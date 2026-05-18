@@ -16,7 +16,13 @@ import {
   type WebFeedbackPriority,
 } from './priorities'
 import type { AnnotationObject } from './annotation-document'
+import {
+  type FeedbackContextInput,
+  resolveFeedbackContext,
+} from './resolve-context'
 import { captureViewportAsFile } from './utils/capture-region'
+
+export type { FeedbackContextInput }
 import { collectClipboardImages } from './utils/feedback-files'
 
 const DEFAULT_MAX_VIDEO_MS = 30_000
@@ -30,6 +36,7 @@ export interface TiltedOSFeedbackProviderProps {
   readonly maxVideoDurationMs?: number
   readonly appVersion?: string
   readonly buildNumber?: string
+  readonly context?: FeedbackContextInput
 }
 
 interface TiltedOSFeedbackProviderActiveProps
@@ -72,6 +79,7 @@ const TiltedOSFeedbackProviderActive = ({
   maxVideoDurationMs = DEFAULT_MAX_VIDEO_MS,
   appVersion,
   buildNumber,
+  context,
 }: TiltedOSFeedbackProviderActiveProps) => {
   const [open, setOpen] = useState(false)
   const [description, setDescription] = useState('')
@@ -264,6 +272,7 @@ const TiltedOSFeedbackProviderActive = ({
         video: videoItem?.file ?? null,
         appVersion,
         buildNumber,
+        context: resolveFeedbackContext(context),
       })
       resetForm()
       setOpen(false)
@@ -272,7 +281,16 @@ const TiltedOSFeedbackProviderActive = ({
     } finally {
       setSubmitting(false)
     }
-  }, [apiKey, appVersion, buildNumber, description, mediaItems, priority, resetForm])
+  }, [
+    apiKey,
+    appVersion,
+    buildNumber,
+    description,
+    context,
+    mediaItems,
+    priority,
+    resetForm,
+  ])
 
   const annotateItem = mediaItems.find((m) => m.id === annotateId)
   const isRecording = screenRecorder.phase !== 'idle'
