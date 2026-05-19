@@ -1,5 +1,6 @@
 import { MessageSquarePlus, X } from 'lucide-react'
 
+import { useFeedbackMessages } from '../feedback-messages-context'
 import { FEEDBACK_UI_ATTR } from '../utils/capture-region'
 import { feedbackTheme } from '../styles/feedback-theme'
 
@@ -13,11 +14,14 @@ export const FloatingTrigger = ({
   open,
   onClick,
   accentColor = feedbackTheme.accent,
-}: FloatingTriggerProps) => (
+}: FloatingTriggerProps) => {
+  const { messages } = useFeedbackMessages()
+
+  return (
   <button
     {...{ [FEEDBACK_UI_ATTR]: '' }}
     type="button"
-    aria-label={open ? 'Fermer le feedback' : 'Ouvrir le feedback'}
+    aria-label={open ? messages.triggerClose : messages.triggerOpen}
     onClick={onClick}
     style={{
       position: 'fixed',
@@ -39,4 +43,5 @@ export const FloatingTrigger = ({
   >
     {open ? <X size={24} strokeWidth={2.25} /> : <MessageSquarePlus size={24} strokeWidth={2.25} />}
   </button>
-)
+  )
+}

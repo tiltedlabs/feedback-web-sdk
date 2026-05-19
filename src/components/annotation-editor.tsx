@@ -16,6 +16,7 @@ import {
   type AnnotationObject,
   type AnnotationPoint,
 } from '../annotation-document'
+import { useFeedbackMessages } from '../feedback-messages-context'
 import { FEEDBACK_UI_ATTR } from '../utils/capture-region'
 import { feedbackFileFromBlob } from '../utils/feedback-files'
 
@@ -57,15 +58,6 @@ interface DragState {
   readonly offsetX: number
   readonly offsetY: number
 }
-
-const ANNOTATION_COLORS: readonly {
-  readonly value: AnnotationColor
-  readonly label: string
-}[] = [
-  { value: '#000000', label: 'Noir' },
-  { value: '#ffffff', label: 'Blanc' },
-  { value: '#ef4444', label: 'Rouge' },
-]
 
 const DEFAULT_COLOR: AnnotationColor = '#ef4444'
 const SELECTION_COLOR = '#8b5cf6'
@@ -294,6 +286,15 @@ export const AnnotationEditor = ({
   onClose,
   onSave,
 }: AnnotationEditorProps) => {
+  const { messages } = useFeedbackMessages()
+  const annotationColors: readonly {
+    readonly value: AnnotationColor
+    readonly label: string
+  }[] = [
+    { value: '#000000', label: messages.colorBlack },
+    { value: '#ffffff', label: messages.colorWhite },
+    { value: '#ef4444', label: messages.colorRed },
+  ]
   const canvasRef = useRef<HTMLCanvasElement>(null)
   const penCanvasRef = useRef<HTMLCanvasElement | null>(null)
   const startPointRef = useRef<Point | null>(null)
@@ -809,7 +810,7 @@ export const AnnotationEditor = ({
       <button
         type="button"
         onClick={handleClose}
-        aria-label="Fermer"
+        aria-label={messages.close}
         style={closeBtnStyle}
       >
         <X size={22} strokeWidth={2} />
@@ -854,7 +855,7 @@ export const AnnotationEditor = ({
           data-tfb-annotation-text
           autoFocus
           value={textPlacement.value}
-          placeholder="Votre texte…"
+          placeholder={messages.textPlaceholder}
           onChange={(e) => {
             const next = { ...textPlacement, value: e.target.value }
             textPlacementRef.current = next
@@ -903,37 +904,37 @@ export const AnnotationEditor = ({
       ) : null}
 
       <div style={bottomDockStyle}>
-        <div role="toolbar" aria-label="Outils d’annotation" style={floatingToolbarStyle}>
+        <div role="toolbar" aria-label={messages.annotationToolbar} style={floatingToolbarStyle}>
           <ToolButton
             active={tool === 'select'}
-            label="Sélectionner / déplacer"
+            label={messages.toolSelect}
             onClick={() => switchTool('select')}
           >
             <MousePointer2 size={18} strokeWidth={2} />
           </ToolButton>
           <ToolButton
             active={tool === 'pen'}
-            label="Trait libre"
+            label={messages.toolPen}
             onClick={() => switchTool('pen')}
           >
             <LineSquiggle size={18} strokeWidth={2} />
           </ToolButton>
           <ToolButton
             active={tool === 'rectangle'}
-            label="Rectangle"
+            label={messages.toolRectangle}
             onClick={() => switchTool('rectangle')}
           >
             <Square size={18} strokeWidth={2} />
           </ToolButton>
           <ToolButton
             active={tool === 'text'}
-            label="Texte"
+            label={messages.toolText}
             onClick={() => switchTool('text')}
           >
             <Type size={18} strokeWidth={2} />
           </ToolButton>
           <div style={toolbarDividerStyle} />
-          {ANNOTATION_COLORS.map((c) => (
+          {annotationColors.map((c) => (
             <ColorSwatch
               key={c.value}
               color={c.value}
@@ -945,7 +946,7 @@ export const AnnotationEditor = ({
           <div style={toolbarDividerStyle} />
           <ToolButton
             active={false}
-            label="Supprimer la sélection"
+            label={messages.deleteSelection}
             onClick={deleteSelected}
             disabled={!selectedId}
           >
@@ -953,7 +954,7 @@ export const AnnotationEditor = ({
           </ToolButton>
         </div>
         <button type="button" onClick={handleSave} style={primaryBtn}>
-          Enregistrer
+          {messages.save}
         </button>
       </div>
     </div>,

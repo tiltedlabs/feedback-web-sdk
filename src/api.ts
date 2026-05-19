@@ -11,6 +11,8 @@ interface SubmitWebFeedbackParams {
   readonly buildNumber?: string
   /** Métadonnées injectées dans la description côté serveur (user id, email, etc.). */
   readonly context?: Record<string, string>
+  /** Message d’erreur si aucun média (i18n). */
+  readonly mediaRequiredMessage?: string
   /** Images (captures, uploads). Envoyées dans `attachments`. */
   readonly images?: readonly File[]
   /** Première image aussi dans `screenshot` (mobile legacy). Désactivé par défaut côté web. */
@@ -51,7 +53,9 @@ export async function submitWebFeedback(
   const video = params.video ?? null
 
   if (images.length === 0 && !video) {
-    throw new Error('Au moins une image ou une vidéo est requise.')
+    throw new Error(
+      params.mediaRequiredMessage ?? 'At least one image or video is required.',
+    )
   }
 
   const form = new FormData()

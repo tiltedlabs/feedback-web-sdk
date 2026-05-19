@@ -10,7 +10,12 @@ import { FloatingTrigger } from './components/floating-trigger'
 import type { MediaPreviewItem } from './components/media-preview-list'
 import { VideoRecordingStatus } from './components/video-recording-status'
 import { FeedbackContext } from './feedback-context'
+import { FeedbackMessagesProvider } from './feedback-messages-context'
 import { useScreenRecorder } from './hooks/use-screen-recorder'
+import {
+  getFeedbackMessages,
+  type FeedbackLocale,
+} from './i18n'
 import {
   DEFAULT_WEB_FEEDBACK_PRIORITY,
   type WebFeedbackPriority,
@@ -22,7 +27,7 @@ import {
 } from './resolve-context'
 import { captureViewportAsFile } from './utils/capture-region'
 
-export type { FeedbackContextInput }
+export type { FeedbackContextInput, FeedbackLocale }
 import { collectClipboardImages } from './utils/feedback-files'
 
 const DEFAULT_MAX_VIDEO_MS = 30_000
@@ -37,6 +42,8 @@ export interface TiltedOSFeedbackProviderProps {
   readonly appVersion?: string
   readonly buildNumber?: string
   readonly context?: FeedbackContextInput
+  /** Langue de l’UI du widget (`fr` par défaut). */
+  readonly locale?: FeedbackLocale
 }
 
 interface TiltedOSFeedbackProviderActiveProps
@@ -80,7 +87,13 @@ const TiltedOSFeedbackProviderActive = ({
   appVersion,
   buildNumber,
   context,
+  locale,
 }: TiltedOSFeedbackProviderActiveProps) => {
+  const messages = useMemo(() => getFeedbackMessages(locale), [locale])
+  const messagesCtx = useMemo(
+    () => ({ locale: locale === 'en' ? 'en' as const : 'fr' as const, messages }),
+    [locale, messages],
+  )
   const [open, setOpen] = useState(false)
   const [description, setDescription] = useState('')
   const [priority, setPriority] = useState<WebFeedbackPriority>(
@@ -93,7 +106,7 @@ const TiltedOSFeedbackProviderActive = ({
   const [capturingViewport, setCapturingViewport] = useState(false)
   const [annotateId, setAnnotateId] = useState<string | null>(null)
 
-  const screenRecorder = useScreenRecorder(maxVideoDurationMs)
+  const screenRecorder = useScreenRecorder(maxVideoDurationMs, messages)
 
   const previewUrlsRef = useRef<Set<string>>(new Set())
 
@@ -215,12 +228,12 @@ const TiltedOSFeedbackProviderActive = ({
         return
       }
       setSubmitError(
-        e instanceof Error ? e.message : 'Impossible de capturer la fenêtre',
+        e instanceof Error ? e.message : messages.captureViewportFailed,
       )
     } finally {
       setCapturingViewport(false)
     }
-  }, [addMediaFile, capturingViewport])
+  }, [addMediaFile, capturingViewport, messages.captureViewportFailed])
 
   const onPaste = useCallback(
     (e: React.ClipboardEvent) => {
@@ -251,13 +264,13 @@ const TiltedOSFeedbackProviderActive = ({
   const onSubmit = useCallback(async () => {
     const desc = description.trim()
     if (desc.length < 3) {
-      setSubmitError('La description doit contenir au moins 3 caractères.')
+      setSubmitError(messages.descriptionMinLength)
       return
     }
     const images = mediaItems.filter((m) => m.kind === 'image').map((m) => m.file)
     const videoItem = mediaItems.find((m) => m.kind === 'video')
     if (images.length === 0 && !videoItem) {
-      setSubmitError('Ajoute au moins une image ou une vidéo.')
+      setSubmitError(messages.mediaRequired)
       return
     }
 
@@ -273,11 +286,12 @@ const TiltedOSFeedbackProviderActive = ({
         appVersion,
         buildNumber,
         context: resolveFeedbackContext(context),
+        mediaRequiredMessage: messages.mediaRequiredApi,
       })
       resetForm()
       setOpen(false)
     } catch (e) {
-      setSubmitError(e instanceof Error ? e.message : "Impossible d'envoyer le feedback")
+      setSubmitError(e instanceof Error ? e.message : messages.submitFailed)
     } finally {
       setSubmitting(false)
     }
@@ -289,6 +303,7 @@ const TiltedOSFeedbackProviderActive = ({
     context,
     mediaItems,
     priority,
+    messages,
     resetForm,
   ])
 
@@ -298,6 +313,7 @@ const TiltedOSFeedbackProviderActive = ({
   const ctx = useMemo(() => ({ open, setOpen }), [open])
 
   return (
+    <FeedbackMessagesProvider value={messagesCtx}>
     <FeedbackContext.Provider value={ctx}>
       {children}
       <FloatingTrigger
@@ -354,5 +370,6 @@ const TiltedOSFeedbackProviderActive = ({
         />
       ) : null}
     </FeedbackContext.Provider>
+    </FeedbackMessagesProvider>
   )
 }

@@ -1,5 +1,6 @@
 import { useCallback, useRef, useState } from 'react'
 
+import type { FeedbackMessages } from '../i18n'
 import { feedbackFileFromBlob } from '../utils/feedback-files'
 
 export type ScreenRecorderPhase = 'idle' | 'requesting' | 'recording'
@@ -24,7 +25,10 @@ export interface UseScreenRecorderResult {
   readonly cancel: () => void
 }
 
-export const useScreenRecorder = (maxDurationMs: number): UseScreenRecorderResult => {
+export const useScreenRecorder = (
+  maxDurationMs: number,
+  messages: FeedbackMessages,
+): UseScreenRecorderResult => {
   const [phase, setPhase] = useState<ScreenRecorderPhase>('idle')
   const [elapsedSec, setElapsedSec] = useState(0)
   const [error, setError] = useState<string | null>(null)
@@ -36,6 +40,9 @@ export const useScreenRecorder = (maxDurationMs: number): UseScreenRecorderResul
   const tickRef = useRef<ReturnType<typeof setInterval> | null>(null)
   const mimeTypeRef = useRef('video/webm')
   const resolveRef = useRef<((file: File | null) => void) | null>(null)
+  const messagesRef = useRef(messages)
+
+  messagesRef.current = messages
 
   const maxSec = Math.round(maxDurationMs / 1000)
 
@@ -95,6 +102,7 @@ export const useScreenRecorder = (maxDurationMs: number): UseScreenRecorderResul
       resolveRef.current = resolve
 
       void (async () => {
+        const m = messagesRef.current
         try {
           const stream = await navigator.mediaDevices.getDisplayMedia({
             video: { frameRate: 30 },
@@ -123,7 +131,7 @@ export const useScreenRecorder = (maxDurationMs: number): UseScreenRecorderResul
           }
 
           recorder.onerror = () => {
-            setError('Erreur pendant l’enregistrement.')
+            setError(m.recordingError)
             setPhase('idle')
             cleanup()
             resolve(null)
@@ -136,7 +144,7 @@ export const useScreenRecorder = (maxDurationMs: number): UseScreenRecorderResul
             setPhase('idle')
 
             if (blob.size < 1) {
-              setError('Aucune donnée vidéo enregistrée.')
+              setError(m.noVideoData)
               resolve(null)
               resolveRef.current = null
               return
@@ -174,9 +182,9 @@ export const useScreenRecorder = (maxDurationMs: number): UseScreenRecorderResul
           const message =
             e instanceof Error
               ? e.name === 'NotAllowedError'
-                ? 'Partage d’écran refusé ou annulé.'
+                ? m.screenShareDenied
                 : e.message
-              : 'Impossible de démarrer l’enregistrement.'
+              : m.recordingStartFailed
           setError(message)
           resolve(null)
           resolveRef.current = null

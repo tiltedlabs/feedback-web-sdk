@@ -1,6 +1,8 @@
 import { Pencil, Trash2 } from 'lucide-react'
 import { useState, type CSSProperties } from 'react'
 
+import { useFeedbackMessages } from '../feedback-messages-context'
+
 import type { AnnotationObject } from '../annotation-document'
 import { MediaPreviewLightbox } from './media-preview-lightbox'
 
@@ -38,6 +40,7 @@ export const MediaPreviewList = ({
   onRemove,
   onAnnotate,
 }: MediaPreviewListProps) => {
+  const { messages } = useFeedbackMessages()
   const [previewId, setPreviewId] = useState<string | null>(null)
   const previewItem = previewId ? items.find((i) => i.id === previewId) ?? null : null
 
@@ -110,8 +113,8 @@ export const MediaPreviewList = ({
                   type="button"
                   onClick={() => onAnnotate(item.id)}
                   style={iconButtonStyle}
-                  title="Annoter"
-                  aria-label="Annoter"
+                  title={messages.annotate}
+                  aria-label={messages.annotate}
                 >
                   <Pencil size={14} strokeWidth={2} />
                 </button>
@@ -120,8 +123,8 @@ export const MediaPreviewList = ({
                 type="button"
                 onClick={() => onRemove(item.id)}
                 style={iconButtonStyle}
-                title="Retirer"
-                aria-label="Retirer"
+                title={messages.remove}
+                aria-label={messages.remove}
               >
                 <Trash2 size={14} strokeWidth={2} />
               </button>

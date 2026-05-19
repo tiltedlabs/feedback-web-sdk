@@ -30,14 +30,4 @@ export const WEB_FEEDBACK_PRIORITY_STYLES: Record<
   },
 }
 
-export const WEB_FEEDBACK_PRIORITIES: readonly {
-  readonly value: WebFeedbackPriority
-  readonly label: string
-}[] = [
-  { value: 'low', label: 'Basse' },
-  { value: 'medium', label: 'Normale' },
-  { value: 'high', label: 'Haute' },
-  { value: 'critical', label: 'Critique' },
-] as const
-
 export const DEFAULT_WEB_FEEDBACK_PRIORITY: WebFeedbackPriority = 'medium'

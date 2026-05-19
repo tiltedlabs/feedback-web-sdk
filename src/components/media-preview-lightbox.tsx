@@ -2,6 +2,7 @@ import { X } from 'lucide-react'
 import { useEffect } from 'react'
 import { createPortal } from 'react-dom'
 
+import { useFeedbackMessages } from '../feedback-messages-context'
 import { FEEDBACK_UI_ATTR } from '../utils/capture-region'
 import type { MediaPreviewItem } from './media-preview-list'
 
@@ -11,6 +12,8 @@ export interface MediaPreviewLightboxProps {
 }
 
 export const MediaPreviewLightbox = ({ item, onClose }: MediaPreviewLightboxProps) => {
+  const { messages } = useFeedbackMessages()
+
   useEffect(() => {
     if (!item) {
       return
@@ -38,7 +41,7 @@ export const MediaPreviewLightbox = ({ item, onClose }: MediaPreviewLightboxProp
       {...{ [FEEDBACK_UI_ATTR]: '' }}
       role="dialog"
       aria-modal="true"
-      aria-label="Aperçu du média"
+      aria-label={messages.mediaPreview}
       onClick={onClose}
       style={{
         position: 'fixed',
@@ -59,7 +62,7 @@ export const MediaPreviewLightbox = ({ item, onClose }: MediaPreviewLightboxProp
           e.stopPropagation()
           onClose()
         }}
-        aria-label="Fermer l’aperçu"
+        aria-label={messages.closePreview}
         style={{
           position: 'fixed',
           top: 20,

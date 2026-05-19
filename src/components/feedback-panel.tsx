@@ -1,11 +1,9 @@
 import { Camera, Loader2, Scan, SendHorizontal, Video } from 'lucide-react'
 import { createPortal } from 'react-dom'
 
-import {
-  WEB_FEEDBACK_PRIORITIES,
-  WEB_FEEDBACK_PRIORITY_STYLES,
-  type WebFeedbackPriority,
-} from '../priorities'
+import { useFeedbackMessages } from '../feedback-messages-context'
+import { getPriorityOptions } from '../i18n'
+import { WEB_FEEDBACK_PRIORITY_STYLES, type WebFeedbackPriority } from '../priorities'
 import { FEEDBACK_UI_ATTR } from '../utils/capture-region'
 import { feedbackTheme } from '../styles/feedback-theme'
 import type { MediaPreviewItem } from './media-preview-list'
@@ -52,6 +50,9 @@ export const FeedbackPanel = ({
   accentColor = feedbackTheme.accent,
   videoRecordingActive = false,
 }: FeedbackPanelProps) => {
+  const { messages } = useFeedbackMessages()
+  const priorityOptions = getPriorityOptions(messages)
+
   if (!open) {
     return null
   }
@@ -80,20 +81,20 @@ export const FeedbackPanel = ({
     >
       <div style={scrollAreaStyle} onPaste={onPaste}>
         <label style={labelStyle}>
-          Description
+          {messages.descriptionLabel}
           <textarea
             value={description}
             onChange={(e) => onDescriptionChange(e.target.value)}
-            placeholder="Décris le problème ou l’idée…"
+            placeholder={messages.descriptionPlaceholder}
             rows={4}
             style={textareaStyle}
           />
         </label>
 
         <div>
-          <span style={labelStyle}>Priorité</span>
+          <span style={labelStyle}>{messages.prioritySectionLabel}</span>
           <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginTop: 6 }}>
-            {WEB_FEEDBACK_PRIORITIES.map((opt) => {
+            {priorityOptions.map((opt) => {
               const selected = priority === opt.value
               const style = WEB_FEEDBACK_PRIORITY_STYLES[opt.value]
               return (
@@ -144,11 +145,11 @@ export const FeedbackPanel = ({
               disabled={capturingViewport}
             >
               <Camera size={14} strokeWidth={2} />
-              {capturingViewport ? 'Capture…' : 'Capture'}
+              {capturingViewport ? messages.captureInProgress : messages.capture}
             </button>
             <button type="button" style={toolBtn} onClick={onStartCapture}>
               <Scan size={14} strokeWidth={2} />
-              Zone
+              {messages.zone}
             </button>
             <button
               type="button"
@@ -161,14 +162,14 @@ export const FeedbackPanel = ({
               disabled={videoRecordingActive}
             >
               <Video size={14} strokeWidth={2} />
-              {videoRecordingActive ? 'En cours…' : 'Vidéo'}
+              {videoRecordingActive ? messages.videoInProgress : messages.video}
             </button>
           </div>
           <button
             type="button"
             disabled={submitting}
             onClick={onSubmit}
-            aria-label="Envoyer le feedback"
+            aria-label={messages.sendFeedback}
             style={{
               ...sendBtnStyle,
               background: accentColor,

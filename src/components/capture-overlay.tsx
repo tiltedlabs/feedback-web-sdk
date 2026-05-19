@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState } from 'react'
 import { createPortal } from 'react-dom'
 
+import { useFeedbackMessages } from '../feedback-messages-context'
 import {
   captureRegionAsFile,
   FEEDBACK_UI_ATTR,
@@ -18,6 +19,7 @@ export const CaptureOverlay = ({
   onCancel,
   onCaptured,
 }: CaptureOverlayProps) => {
+  const { messages } = useFeedbackMessages()
   const [dragging, setDragging] = useState(false)
   const [start, setStart] = useState<{ x: number; y: number } | null>(null)
   const [region, setRegion] = useState<RegionRect | null>(null)
@@ -89,7 +91,7 @@ export const CaptureOverlay = ({
       onCaptured(file)
       reset()
     } catch (err) {
-      alert(err instanceof Error ? err.message : 'Capture impossible')
+      alert(err instanceof Error ? err.message : messages.captureFailed)
       reset()
     }
   }
@@ -128,9 +130,7 @@ export const CaptureOverlay = ({
           pointerEvents: 'none',
         }}
       >
-        {busy
-          ? 'Choisis l’onglet ou l’écran à capturer…'
-          : 'Dessinez une zone à capturer'}
+        {busy ? messages.captureSelecting : messages.drawRegion}
       </div>
       {region && region.width > 0 && region.height > 0 ? (
         <div
@@ -167,7 +167,7 @@ export const CaptureOverlay = ({
           fontFamily: 'system-ui, sans-serif',
         }}
       >
-        Annuler
+        {messages.cancel}
       </button>
     </div>,
     document.body,

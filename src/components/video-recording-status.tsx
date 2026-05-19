@@ -1,6 +1,7 @@
 import { Loader2, Square } from 'lucide-react'
 import { createPortal } from 'react-dom'
 
+import { useFeedbackMessages } from '../feedback-messages-context'
 import { FEEDBACK_UI_ATTR } from '../utils/capture-region'
 import type { ScreenRecorderPhase } from '../hooks/use-screen-recorder'
 
@@ -17,6 +18,8 @@ export const VideoRecordingStatus = ({
   maxSec,
   onStop,
 }: VideoRecordingStatusProps) => {
+  const { messages } = useFeedbackMessages()
+
   if (phase === 'idle') {
     return null
   }
@@ -50,7 +53,7 @@ export const VideoRecordingStatus = ({
             strokeWidth={2.25}
             style={{ animation: 'tfb-rec-spin 1s linear infinite', flexShrink: 0 }}
           />
-          <span>Choisir l’écran à partager…</span>
+          <span>{messages.chooseScreenToShare}</span>
         </>
       ) : (
         <>
@@ -86,7 +89,7 @@ export const VideoRecordingStatus = ({
             }}
           >
             <Square size={12} fill="currentColor" strokeWidth={0} />
-            Arrêter
+            {messages.stopRecording}
           </button>
         </>
       )}
