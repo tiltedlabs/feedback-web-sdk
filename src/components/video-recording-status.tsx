@@ -1,7 +1,9 @@
 import { Loader2, Square } from 'lucide-react'
 import { createPortal } from 'react-dom'
 
+import { useFeedbackWidgetAnchor } from '../feedback-widget-anchor-context'
 import { useFeedbackMessages } from '../feedback-messages-context'
+import { getVideoStatusPositionStyle } from '../utils/widget-anchor'
 import { FEEDBACK_UI_ATTR } from '../utils/capture-region'
 import type { ScreenRecorderPhase } from '../hooks/use-screen-recorder'
 
@@ -19,6 +21,7 @@ export const VideoRecordingStatus = ({
   onStop,
 }: VideoRecordingStatusProps) => {
   const { messages } = useFeedbackMessages()
+  const { anchor } = useFeedbackWidgetAnchor()
 
   if (phase === 'idle') {
     return null
@@ -28,10 +31,7 @@ export const VideoRecordingStatus = ({
     <div
       {...{ [FEEDBACK_UI_ATTR]: '' }}
       style={{
-        position: 'fixed',
-        right: 88,
-        bottom: 26,
-        zIndex: 2147483000,
+        ...getVideoStatusPositionStyle(anchor),
         display: 'flex',
         alignItems: 'center',
         gap: 10,

@@ -9,6 +9,7 @@ import { FeedbackPanel } from './components/feedback-panel'
 import { FloatingTrigger } from './components/floating-trigger'
 import type { MediaPreviewItem } from './components/media-preview-list'
 import { VideoRecordingStatus } from './components/video-recording-status'
+import { FeedbackWidgetAnchorProvider } from './feedback-widget-anchor-context'
 import { FeedbackContext } from './feedback-context'
 import { FeedbackMessagesProvider } from './feedback-messages-context'
 import { useScreenRecorder } from './hooks/use-screen-recorder'
@@ -315,6 +316,7 @@ const TiltedOSFeedbackProviderActive = ({
   return (
     <FeedbackMessagesProvider value={messagesCtx}>
     <FeedbackContext.Provider value={ctx}>
+      <FeedbackWidgetAnchorProvider>
       {children}
       <FloatingTrigger
         open={open}
@@ -369,6 +371,7 @@ const TiltedOSFeedbackProviderActive = ({
           }}
         />
       ) : null}
+      </FeedbackWidgetAnchorProvider>
     </FeedbackContext.Provider>
     </FeedbackMessagesProvider>
   )

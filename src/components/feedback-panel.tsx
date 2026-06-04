@@ -1,7 +1,9 @@
 import { Camera, Loader2, Scan, SendHorizontal, Video } from 'lucide-react'
 import { createPortal } from 'react-dom'
 
+import { useFeedbackWidgetAnchor } from '../feedback-widget-anchor-context'
 import { useFeedbackMessages } from '../feedback-messages-context'
+import { getPanelPositionStyle } from '../utils/widget-anchor'
 import { getPriorityOptions } from '../i18n'
 import { WEB_FEEDBACK_PRIORITY_STYLES, type WebFeedbackPriority } from '../priorities'
 import { FEEDBACK_UI_ATTR } from '../utils/capture-region'
@@ -51,6 +53,7 @@ export const FeedbackPanel = ({
   videoRecordingActive = false,
 }: FeedbackPanelProps) => {
   const { messages } = useFeedbackMessages()
+  const { anchor } = useFeedbackWidgetAnchor()
   const priorityOptions = getPriorityOptions(messages)
 
   if (!open) {
@@ -61,13 +64,9 @@ export const FeedbackPanel = ({
     <div
       {...{ [FEEDBACK_UI_ATTR]: '' }}
       style={{
-        position: 'fixed',
-        right: 20,
-        bottom: 88,
-        zIndex: 2147483001,
+        ...getPanelPositionStyle(anchor),
         width: 420,
         maxWidth: 'calc(100vw - 40px)',
-        maxHeight: 'min(70vh, 640px)',
         display: 'flex',
         flexDirection: 'column',
         background: feedbackTheme.panelBg,
