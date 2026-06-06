@@ -1,11 +1,14 @@
-import { MOBILE_FEEDBACK_PATH, TILTEDOS_API_BASE_URL } from './config'
-import type { WebFeedbackPriority } from './priorities'
+import {
+  MOBILE_FEEDBACK_CONFIG_PATH,
+  MOBILE_FEEDBACK_PATH,
+  TILTEDOS_API_BASE_URL,
+} from './config'
+import type { FieldValueInput, MobileFeedbackConfig } from './feedback-config'
 
 interface SubmitWebFeedbackParams {
   readonly apiKey: string
   readonly description: string
-  readonly apiBaseUrl?: string
-  readonly priority?: WebFeedbackPriority
+  readonly fieldValues?: Record<string, FieldValueInput>
   readonly title?: string
   readonly appVersion?: string
   readonly buildNumber?: string
@@ -44,10 +47,31 @@ async function parseErrorBody(res: Response, text: string): Promise<string> {
   return text
 }
 
+export async function fetchMobileFeedbackConfig(
+  apiKey: string,
+): Promise<MobileFeedbackConfig> {
+  const base = TILTEDOS_API_BASE_URL.replace(/\/$/, '')
+  const url = `${base}${MOBILE_FEEDBACK_CONFIG_PATH}`
+  const res = await fetch(url, {
+    method: 'GET',
+    headers: {
+      'x-api-key': apiKey,
+    },
+  })
+  const text = await res.text()
+  if (!res.ok) {
+    throw new Error(await parseErrorBody(res, text))
+  }
+  return text ? (JSON.parse(text) as MobileFeedbackConfig) : {
+    displayFields: [],
+    defaultFieldValues: {},
+  }
+}
+
 export async function submitWebFeedback(
   params: SubmitWebFeedbackParams,
 ): Promise<SubmitWebFeedbackResult> {
-  const base = (params.apiBaseUrl ?? TILTEDOS_API_BASE_URL).replace(/\/$/, '')
+  const base = TILTEDOS_API_BASE_URL.replace(/\/$/, '')
   const url = `${base}${MOBILE_FEEDBACK_PATH}`
   const images = params.images ?? []
   const video = params.video ?? null
@@ -61,8 +85,9 @@ export async function submitWebFeedback(
   const form = new FormData()
   form.append('description', params.description)
   form.append('platform', 'web')
-  if (params.priority) {
-    form.append('priority', params.priority)
+  const fieldValues = params.fieldValues ?? {}
+  if (Object.keys(fieldValues).length > 0) {
+    form.append('fieldValues', JSON.stringify(fieldValues))
   }
   if (params.title?.trim()) {
     form.append('title', params.title.trim())

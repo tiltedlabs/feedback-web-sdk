@@ -2,25 +2,29 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 
-import { submitWebFeedback } from './api'
+import { fetchMobileFeedbackConfig, submitWebFeedback } from './api'
 import { AnnotationEditor } from './components/annotation-editor'
 import { CaptureOverlay } from './components/capture-overlay'
 import { FeedbackPanel } from './components/feedback-panel'
 import { FloatingTrigger } from './components/floating-trigger'
 import type { MediaPreviewItem } from './components/media-preview-list'
 import { VideoRecordingStatus } from './components/video-recording-status'
+import type {
+  FieldValuesState,
+  MobileFeedbackDisplayField,
+} from './feedback-config'
 import { FeedbackWidgetAnchorProvider } from './feedback-widget-anchor-context'
 import { FeedbackContext } from './feedback-context'
 import { FeedbackMessagesProvider } from './feedback-messages-context'
+import {
+  buildSubmitFieldValues,
+  parseDefaultFieldValues,
+} from './field-values'
 import { useScreenRecorder } from './hooks/use-screen-recorder'
 import {
   getFeedbackMessages,
   type FeedbackLocale,
 } from './i18n'
-import {
-  DEFAULT_WEB_FEEDBACK_PRIORITY,
-  type WebFeedbackPriority,
-} from './priorities'
 import type { AnnotationObject } from './annotation-document'
 import {
   type FeedbackContextInput,
@@ -97,9 +101,10 @@ const TiltedOSFeedbackProviderActive = ({
   )
   const [open, setOpen] = useState(false)
   const [description, setDescription] = useState('')
-  const [priority, setPriority] = useState<WebFeedbackPriority>(
-    DEFAULT_WEB_FEEDBACK_PRIORITY,
-  )
+  const [displayFields, setDisplayFields] = useState<
+    readonly MobileFeedbackDisplayField[]
+  >([])
+  const [fieldValues, setFieldValues] = useState<FieldValuesState>({})
   const [mediaItems, setMediaItems] = useState<MediaPreviewItem[]>([])
   const [submitting, setSubmitting] = useState(false)
   const [submitError, setSubmitError] = useState<string | null>(null)
@@ -110,6 +115,34 @@ const TiltedOSFeedbackProviderActive = ({
   const screenRecorder = useScreenRecorder(maxVideoDurationMs, messages)
 
   const previewUrlsRef = useRef<Set<string>>(new Set())
+  const configDefaultsRef = useRef<FieldValuesState>({})
+
+  useEffect(() => {
+    let cancelled = false
+    void fetchMobileFeedbackConfig(apiKey)
+      .then((config) => {
+        if (cancelled) {
+          return
+        }
+        const defaults = parseDefaultFieldValues(
+          config.defaultFieldValues as Record<string, unknown>,
+        )
+        configDefaultsRef.current = defaults
+        setDisplayFields([...config.displayFields])
+        setFieldValues({ ...defaults })
+      })
+      .catch(() => {
+        if (cancelled) {
+          return
+        }
+        configDefaultsRef.current = {}
+        setDisplayFields([])
+        setFieldValues({})
+      })
+    return () => {
+      cancelled = true
+    }
+  }, [apiKey])
 
   const revokeUrl = useCallback((url: string) => {
     URL.revokeObjectURL(url)
@@ -207,7 +240,7 @@ const TiltedOSFeedbackProviderActive = ({
 
   const resetForm = useCallback(() => {
     setDescription('')
-    setPriority(DEFAULT_WEB_FEEDBACK_PRIORITY)
+    setFieldValues({ ...configDefaultsRef.current })
     setMediaItems((prev) => {
       prev.forEach((m) => revokeUrl(m.previewUrl))
       return []
@@ -281,7 +314,10 @@ const TiltedOSFeedbackProviderActive = ({
       await submitWebFeedback({
         apiKey,
         description: desc,
-        priority,
+        fieldValues: buildSubmitFieldValues(
+          fieldValues,
+          displayFields.map((field) => field.id),
+        ),
         images,
         video: videoItem?.file ?? null,
         appVersion,
@@ -302,8 +338,9 @@ const TiltedOSFeedbackProviderActive = ({
     buildNumber,
     description,
     context,
+    displayFields,
+    fieldValues,
     mediaItems,
-    priority,
     messages,
     resetForm,
   ])
@@ -333,8 +370,9 @@ const TiltedOSFeedbackProviderActive = ({
         open={open && screenRecorder.phase !== 'recording'}
         description={description}
         onDescriptionChange={setDescription}
-        priority={priority}
-        onPriorityChange={setPriority}
+        displayFields={displayFields}
+        fieldValues={fieldValues}
+        onFieldValuesChange={setFieldValues}
         mediaItems={mediaItems}
         onRemoveMedia={removeMedia}
         onAnnotateMedia={setAnnotateId}

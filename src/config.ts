@@ -2,3 +2,4 @@
 export const TILTEDOS_API_BASE_URL = 'https://api.tilted.fr'
 
 export const MOBILE_FEEDBACK_PATH = '/ingest/mobile-feedback'
+export const MOBILE_FEEDBACK_CONFIG_PATH = '/ingest/mobile-feedback/config'

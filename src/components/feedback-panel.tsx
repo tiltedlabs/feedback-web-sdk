@@ -3,20 +3,21 @@ import { createPortal } from 'react-dom'
 
 import { useFeedbackWidgetAnchor } from '../feedback-widget-anchor-context'
 import { useFeedbackMessages } from '../feedback-messages-context'
+import type { FieldValuesState, MobileFeedbackDisplayField } from '../feedback-config'
 import { getPanelPositionStyle } from '../utils/widget-anchor'
-import { getPriorityOptions } from '../i18n'
-import { WEB_FEEDBACK_PRIORITY_STYLES, type WebFeedbackPriority } from '../priorities'
 import { FEEDBACK_UI_ATTR } from '../utils/capture-region'
 import { feedbackTheme } from '../styles/feedback-theme'
 import type { MediaPreviewItem } from './media-preview-list'
+import { FeedbackDisplayFields } from './feedback-display-fields'
 import { MediaPreviewList } from './media-preview-list'
 
 export interface FeedbackPanelProps {
   readonly open: boolean
   readonly description: string
   readonly onDescriptionChange: (value: string) => void
-  readonly priority: WebFeedbackPriority
-  readonly onPriorityChange: (value: WebFeedbackPriority) => void
+  readonly displayFields: readonly MobileFeedbackDisplayField[]
+  readonly fieldValues: FieldValuesState
+  readonly onFieldValuesChange: (value: FieldValuesState) => void
   readonly mediaItems: readonly MediaPreviewItem[]
   readonly onRemoveMedia: (id: string) => void
   readonly onAnnotateMedia: (id: string) => void
@@ -36,8 +37,9 @@ export const FeedbackPanel = ({
   open,
   description,
   onDescriptionChange,
-  priority,
-  onPriorityChange,
+  displayFields,
+  fieldValues,
+  onFieldValuesChange,
   mediaItems,
   onRemoveMedia,
   onAnnotateMedia,
@@ -54,7 +56,6 @@ export const FeedbackPanel = ({
 }: FeedbackPanelProps) => {
   const { messages } = useFeedbackMessages()
   const { anchor } = useFeedbackWidgetAnchor()
-  const priorityOptions = getPriorityOptions(messages)
 
   if (!open) {
     return null
@@ -90,34 +91,11 @@ export const FeedbackPanel = ({
           />
         </label>
 
-        <div>
-          <span style={labelStyle}>{messages.prioritySectionLabel}</span>
-          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginTop: 6 }}>
-            {priorityOptions.map((opt) => {
-              const selected = priority === opt.value
-              const style = WEB_FEEDBACK_PRIORITY_STYLES[opt.value]
-              return (
-                <button
-                  key={opt.value}
-                  type="button"
-                  onClick={() => onPriorityChange(opt.value)}
-                  style={{
-                    padding: '4px 10px',
-                    borderRadius: 6,
-                    border: `1px solid ${selected ? style.border : '#3f3f46'}`,
-                    background: selected ? style.background : 'transparent',
-                    color: selected ? style.text : feedbackTheme.textMuted,
-                    cursor: 'pointer',
-                    fontSize: 12,
-                    fontWeight: 500,
-                  }}
-                >
-                  {opt.label}
-                </button>
-              )
-            })}
-          </div>
-        </div>
+        <FeedbackDisplayFields
+          fields={displayFields}
+          values={fieldValues}
+          onChange={onFieldValuesChange}
+        />
 
         <MediaPreviewList
           items={mediaItems}
