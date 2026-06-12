@@ -1,6 +1,6 @@
 {
   "name": "@tiltedlabs/feedback-web",
-  "version": "0.1.6",
+  "version": "0.1.7",
   "description": "Widget feedback web TiltedOS (capture, annotation, vidéo)",
   "license": "MIT",
   "type": "module",

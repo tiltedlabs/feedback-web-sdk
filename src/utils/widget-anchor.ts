@@ -1,36 +1,126 @@
 import type { CSSProperties } from 'react'
 
-export type FeedbackWidgetEdge = 'bottom' | 'top' | 'left' | 'right'
-
-/** Position le long du bord : début (gauche / haut) ou fin (droite / bas). */
-export type FeedbackWidgetAlign = 'start' | 'end'
-
-export interface FeedbackWidgetAnchor {
-  readonly edge: FeedbackWidgetEdge
-  readonly align: FeedbackWidgetAlign
+export interface FeedbackWidgetPosition {
+  readonly left: number
+  readonly top: number
 }
 
-export const DEFAULT_WIDGET_ANCHOR: FeedbackWidgetAnchor = {
-  edge: 'bottom',
-  align: 'end',
+/** @deprecated Utiliser {@link FeedbackWidgetPosition} */
+export type FeedbackWidgetAnchor = FeedbackWidgetPosition
+
+export const DEFAULT_WIDGET_ANCHOR: FeedbackWidgetPosition = {
+  left: 0,
+  top: 0,
 }
 
 const STORAGE_KEY = 'tilted-feedback-widget-anchor'
 
-const OFFSET_PX = 20
-const TRIGGER_SIZE_PX = 56
+export const OFFSET_PX = 20
+export const TRIGGER_SIZE_PX = 56
 const PANEL_GAP_PX = 12
+const PANEL_WIDTH_PX = 420
 
-export const loadWidgetAnchor = (): FeedbackWidgetAnchor => {
+interface LegacyWidgetAnchor {
+  readonly edge?: 'bottom' | 'top' | 'left' | 'right'
+  readonly align?: 'start' | 'end'
+}
+
+const defaultPosition = (): FeedbackWidgetPosition => {
   if (typeof window === 'undefined') {
     return DEFAULT_WIDGET_ANCHOR
   }
+  return {
+    left: window.innerWidth - OFFSET_PX - TRIGGER_SIZE_PX,
+    top: window.innerHeight - OFFSET_PX - TRIGGER_SIZE_PX,
+  }
+}
+
+const legacyToPosition = (legacy: LegacyWidgetAnchor): FeedbackWidgetPosition => {
+  const w = window.innerWidth
+  const h = window.innerHeight
+
+  switch (legacy.edge) {
+    case 'top':
+      return {
+        left:
+          legacy.align === 'start'
+            ? OFFSET_PX
+            : w - OFFSET_PX - TRIGGER_SIZE_PX,
+        top: OFFSET_PX,
+      }
+    case 'left':
+      return {
+        left: OFFSET_PX,
+        top:
+          legacy.align === 'start'
+            ? OFFSET_PX
+            : h - OFFSET_PX - TRIGGER_SIZE_PX,
+      }
+    case 'right':
+      return {
+        left: w - OFFSET_PX - TRIGGER_SIZE_PX,
+        top:
+          legacy.align === 'start'
+            ? OFFSET_PX
+            : h - OFFSET_PX - TRIGGER_SIZE_PX,
+      }
+    case 'bottom':
+    default:
+      return {
+        left:
+          legacy.align === 'start'
+            ? OFFSET_PX
+            : w - OFFSET_PX - TRIGGER_SIZE_PX,
+        top: h - OFFSET_PX - TRIGGER_SIZE_PX,
+      }
+  }
+}
+
+export const clampPosition = (
+  position: FeedbackWidgetPosition,
+): FeedbackWidgetPosition => {
+  if (typeof window === 'undefined') {
+    return position
+  }
+
+  const maxLeft = Math.max(
+    OFFSET_PX,
+    window.innerWidth - TRIGGER_SIZE_PX - OFFSET_PX,
+  )
+  const maxTop = Math.max(
+    OFFSET_PX,
+    window.innerHeight - TRIGGER_SIZE_PX - OFFSET_PX,
+  )
+
+  return {
+    left: Math.min(Math.max(OFFSET_PX, position.left), maxLeft),
+    top: Math.min(Math.max(OFFSET_PX, position.top), maxTop),
+  }
+}
+
+export const loadWidgetAnchor = (): FeedbackWidgetPosition => {
+  if (typeof window === 'undefined') {
+    return DEFAULT_WIDGET_ANCHOR
+  }
+
   try {
     const raw = window.localStorage.getItem(STORAGE_KEY)
     if (!raw) {
-      return DEFAULT_WIDGET_ANCHOR
+      return defaultPosition()
     }
-    const parsed = JSON.parse(raw) as Partial<FeedbackWidgetAnchor>
+
+    const parsed = JSON.parse(raw) as Partial<FeedbackWidgetPosition> &
+      LegacyWidgetAnchor
+
+    if (
+      typeof parsed.left === 'number' &&
+      typeof parsed.top === 'number' &&
+      Number.isFinite(parsed.left) &&
+      Number.isFinite(parsed.top)
+    ) {
+      return clampPosition({ left: parsed.left, top: parsed.top })
+    }
+
     if (
       (parsed.edge === 'bottom' ||
         parsed.edge === 'top' ||
@@ -38,191 +128,99 @@ export const loadWidgetAnchor = (): FeedbackWidgetAnchor => {
         parsed.edge === 'right') &&
       (parsed.align === 'start' || parsed.align === 'end')
     ) {
-      return { edge: parsed.edge, align: parsed.align }
+      return clampPosition(legacyToPosition(parsed))
     }
   } catch {
     /* ignore */
   }
-  return DEFAULT_WIDGET_ANCHOR
+
+  return defaultPosition()
 }
 
-export const saveWidgetAnchor = (anchor: FeedbackWidgetAnchor): void => {
+export const saveWidgetAnchor = (position: FeedbackWidgetPosition): void => {
   if (typeof window === 'undefined') {
     return
   }
   try {
-    window.localStorage.setItem(STORAGE_KEY, JSON.stringify(anchor))
+    window.localStorage.setItem(STORAGE_KEY, JSON.stringify(position))
   } catch {
     /* quota / mode privé */
   }
 }
 
-/** Snap le centre du widget sur le bord le plus proche. */
-export const snapAnchorFromPoint = (
-  clientX: number,
-  clientY: number,
-): FeedbackWidgetAnchor => {
-  const w = window.innerWidth
-  const h = window.innerHeight
-  const distBottom = h - clientY
-  const distTop = clientY
-  const distRight = w - clientX
-  const distLeft = clientX
-
-  const min = Math.min(distBottom, distTop, distRight, distLeft)
-
-  if (min === distBottom) {
-    return { edge: 'bottom', align: clientX < w / 2 ? 'start' : 'end' }
-  }
-  if (min === distTop) {
-    return { edge: 'top', align: clientX < w / 2 ? 'start' : 'end' }
-  }
-  if (min === distLeft) {
-    return { edge: 'left', align: clientY < h / 2 ? 'start' : 'end' }
-  }
-  return { edge: 'right', align: clientY < h / 2 ? 'start' : 'end' }
-}
-
-const along = (
-  anchor: FeedbackWidgetAnchor,
-  startKey: 'left' | 'top',
-  endKey: 'right' | 'bottom',
-): Pick<CSSProperties, 'left' | 'right' | 'top' | 'bottom'> => {
-  const key = anchor.align === 'start' ? startKey : endKey
-  return { [key]: OFFSET_PX }
-}
-
-const offsetOn = (
-  edgeKey: 'left' | 'right' | 'top' | 'bottom',
-  offset: number,
-): Pick<CSSProperties, 'left' | 'right' | 'top' | 'bottom'> => ({
-  [edgeKey]: offset,
+export const getTriggerPositionStyle = (
+  position: FeedbackWidgetPosition,
+): CSSProperties => ({
+  position: 'fixed',
+  zIndex: 2147483000,
+  left: position.left,
+  top: position.top,
 })
 
-export const getTriggerPositionStyle = (
-  anchor: FeedbackWidgetAnchor,
-): CSSProperties => {
-  const base: CSSProperties = {
-    position: 'fixed',
-    zIndex: 2147483000,
-  }
-
-  switch (anchor.edge) {
-    case 'bottom':
-      return {
-        ...base,
-        ...along(anchor, 'left', 'right'),
-        bottom: OFFSET_PX,
-      }
-    case 'top':
-      return {
-        ...base,
-        ...along(anchor, 'left', 'right'),
-        top: OFFSET_PX,
-      }
-    case 'left':
-      return {
-        ...base,
-        left: OFFSET_PX,
-        ...along(anchor, 'top', 'bottom'),
-      }
-    case 'right':
-      return {
-        ...base,
-        right: OFFSET_PX,
-        ...along(anchor, 'top', 'bottom'),
-      }
-  }
-}
-
-const panelOffsetFromEdge = TRIGGER_SIZE_PX + PANEL_GAP_PX
-
 export const getPanelPositionStyle = (
-  anchor: FeedbackWidgetAnchor,
+  position: FeedbackWidgetPosition,
 ): CSSProperties => {
   const base: CSSProperties = {
     position: 'fixed',
     zIndex: 2147483001,
   }
 
-  switch (anchor.edge) {
-    case 'bottom':
-      return {
-        ...base,
-        ...along(anchor, 'left', 'right'),
-        bottom: OFFSET_PX + panelOffsetFromEdge,
-        maxHeight: 'min(70vh, 640px)',
-      }
-    case 'top':
-      return {
-        ...base,
-        ...along(anchor, 'left', 'right'),
-        top: OFFSET_PX + panelOffsetFromEdge,
-        maxHeight: 'min(70vh, 640px)',
-      }
-    case 'left':
-      return {
-        ...base,
-        left: OFFSET_PX + panelOffsetFromEdge,
-        ...along(anchor, 'top', 'bottom'),
-        maxHeight: 'min(70vh, calc(100vh - 40px))',
-      }
-    case 'right':
-      return {
-        ...base,
-        right: OFFSET_PX + panelOffsetFromEdge,
-        ...along(anchor, 'top', 'bottom'),
-        maxHeight: 'min(70vh, calc(100vh - 40px))',
-      }
+  if (typeof window === 'undefined') {
+    return base
+  }
+
+  const spaceAbove = position.top
+  const spaceBelow =
+    window.innerHeight - position.top - TRIGGER_SIZE_PX
+  const openAbove = spaceAbove >= spaceBelow
+
+  const maxLeft = Math.max(
+    OFFSET_PX,
+    window.innerWidth - PANEL_WIDTH_PX - OFFSET_PX,
+  )
+  const left = Math.min(Math.max(OFFSET_PX, position.left), maxLeft)
+
+  if (openAbove) {
+    return {
+      ...base,
+      left,
+      bottom: window.innerHeight - position.top + PANEL_GAP_PX,
+      maxHeight: `min(70vh, ${Math.max(120, position.top - PANEL_GAP_PX - OFFSET_PX)}px)`,
+    }
+  }
+
+  return {
+    ...base,
+    left,
+    top: position.top + TRIGGER_SIZE_PX + PANEL_GAP_PX,
+    maxHeight: 'min(70vh, 640px)',
   }
 }
 
-/** Badge d’enregistrement vidéo, à côté du bouton flottant. */
 export const getVideoStatusPositionStyle = (
-  anchor: FeedbackWidgetAnchor,
+  position: FeedbackWidgetPosition,
 ): CSSProperties => {
   const base: CSSProperties = {
     position: 'fixed',
     zIndex: 2147483000,
+    top: position.top + 6,
   }
-  const besideTrigger = OFFSET_PX + TRIGGER_SIZE_PX + 12
 
-  switch (anchor.edge) {
-    case 'bottom':
-      return {
-        ...base,
-        ...offsetOn(
-          anchor.align === 'end' ? 'right' : 'left',
-          besideTrigger,
-        ),
-        bottom: OFFSET_PX + 6,
-      }
-    case 'top':
-      return {
-        ...base,
-        ...offsetOn(
-          anchor.align === 'end' ? 'right' : 'left',
-          besideTrigger,
-        ),
-        top: OFFSET_PX + 6,
-      }
-    case 'left':
-      return {
-        ...base,
-        left: besideTrigger,
-        ...offsetOn(
-          anchor.align === 'end' ? 'bottom' : 'top',
-          OFFSET_PX + 6,
-        ),
-      }
-    case 'right':
-      return {
-        ...base,
-        right: besideTrigger,
-        ...offsetOn(
-          anchor.align === 'end' ? 'bottom' : 'top',
-          OFFSET_PX + 6,
-        ),
-      }
+  if (typeof window === 'undefined') {
+    return base
+  }
+
+  const onRightHalf = position.left > window.innerWidth / 2
+
+  if (onRightHalf) {
+    return {
+      ...base,
+      right: window.innerWidth - position.left + 12,
+    }
+  }
+
+  return {
+    ...base,
+    left: position.left + TRIGGER_SIZE_PX + 12,
   }
 }

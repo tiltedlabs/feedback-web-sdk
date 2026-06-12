@@ -13,12 +13,12 @@ import {
   DEFAULT_WIDGET_ANCHOR,
   loadWidgetAnchor,
   saveWidgetAnchor,
-  type FeedbackWidgetAnchor,
+  type FeedbackWidgetPosition,
 } from './utils/widget-anchor'
 
 interface FeedbackWidgetAnchorContextValue {
-  readonly anchor: FeedbackWidgetAnchor
-  readonly setAnchor: (anchor: FeedbackWidgetAnchor) => void
+  readonly anchor: FeedbackWidgetPosition
+  readonly setAnchor: (anchor: FeedbackWidgetPosition) => void
 }
 
 const FeedbackWidgetAnchorContext =
@@ -29,11 +29,11 @@ export const FeedbackWidgetAnchorProvider = ({
 }: {
   readonly children: ReactNode
 }) => {
-  const [anchor, setAnchorState] = useState<FeedbackWidgetAnchor>(() =>
+  const [anchor, setAnchorState] = useState<FeedbackWidgetPosition>(() =>
     loadWidgetAnchor(),
   )
 
-  const setAnchor = useCallback((next: FeedbackWidgetAnchor) => {
+  const setAnchor = useCallback((next: FeedbackWidgetPosition) => {
     setAnchorState(next)
     saveWidgetAnchor(next)
   }, [])

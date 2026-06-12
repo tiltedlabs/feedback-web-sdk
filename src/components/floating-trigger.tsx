@@ -1,12 +1,19 @@
 import { MessageSquarePlus, X } from 'lucide-react'
-import { useCallback, useRef, useState, type CSSProperties, type PointerEvent } from 'react'
+import {
+  useCallback,
+  useRef,
+  useState,
+  type CSSProperties,
+  type PointerEvent,
+} from 'react'
 
 import { useFeedbackWidgetAnchor } from '../feedback-widget-anchor-context'
 import { useFeedbackMessages } from '../feedback-messages-context'
 import { FEEDBACK_UI_ATTR } from '../utils/capture-region'
 import {
+  clampPosition,
   getTriggerPositionStyle,
-  snapAnchorFromPoint,
+  type FeedbackWidgetPosition,
 } from '../utils/widget-anchor'
 import { feedbackTheme } from '../styles/feedback-theme'
 
@@ -26,76 +33,89 @@ export const FloatingTrigger = ({
   const { messages } = useFeedbackMessages()
   const { anchor, setAnchor } = useFeedbackWidgetAnchor()
   const [dragging, setDragging] = useState(false)
+  const [dragPosition, setDragPosition] =
+    useState<FeedbackWidgetPosition | null>(null)
   const dragMovedRef = useRef(false)
-  const pointerIdRef = useRef<number | null>(null)
-  const startRef = useRef({ x: 0, y: 0 })
+  const startRef = useRef({ x: 0, y: 0, left: 0, top: 0 })
 
-  const onPointerDown = useCallback((e: PointerEvent<HTMLButtonElement>) => {
-    if (e.button !== 0) {
-      return
-    }
-    pointerIdRef.current = e.pointerId
-    dragMovedRef.current = false
-    startRef.current = { x: e.clientX, y: e.clientY }
-    e.currentTarget.setPointerCapture(e.pointerId)
-  }, [])
-
-  const onPointerMove = useCallback((e: PointerEvent<HTMLButtonElement>) => {
-    if (pointerIdRef.current !== e.pointerId) {
-      return
-    }
-    const dx = e.clientX - startRef.current.x
-    const dy = e.clientY - startRef.current.y
-    if (!dragMovedRef.current && Math.hypot(dx, dy) < DRAG_THRESHOLD_PX) {
-      return
-    }
-    dragMovedRef.current = true
-    setDragging(true)
-  }, [])
-
-  const finishPointer = useCallback(
+  const onPointerDown = useCallback(
     (e: PointerEvent<HTMLButtonElement>) => {
-      if (pointerIdRef.current !== e.pointerId) {
+      if (e.button !== 0) {
         return
       }
-      try {
-        e.currentTarget.releasePointerCapture(e.pointerId)
-      } catch {
-        /* déjà relâché */
-      }
-      pointerIdRef.current = null
 
-      if (dragMovedRef.current) {
-        setAnchor(snapAnchorFromPoint(e.clientX, e.clientY))
-        setDragging(false)
-        return
-      }
-      setDragging(false)
-      onClick()
-    },
-    [onClick, setAnchor],
-  )
+      e.preventDefault()
 
-  const onPointerUp = useCallback(
-    (e: PointerEvent<HTMLButtonElement>) => {
-      finishPointer(e)
-    },
-    [finishPointer],
-  )
-
-  const onPointerCancel = useCallback(
-    (e: PointerEvent<HTMLButtonElement>) => {
-      if (pointerIdRef.current !== e.pointerId) {
-        return
-      }
-      pointerIdRef.current = null
+      const pointerId = e.pointerId
       dragMovedRef.current = false
-      setDragging(false)
+      startRef.current = {
+        x: e.clientX,
+        y: e.clientY,
+        left: anchor.left,
+        top: anchor.top,
+      }
+
+      const onMove = (ev: globalThis.PointerEvent) => {
+        if (ev.pointerId !== pointerId) {
+          return
+        }
+
+        const dx = ev.clientX - startRef.current.x
+        const dy = ev.clientY - startRef.current.y
+
+        if (
+          !dragMovedRef.current &&
+          Math.hypot(dx, dy) < DRAG_THRESHOLD_PX
+        ) {
+          return
+        }
+
+        dragMovedRef.current = true
+        setDragging(true)
+        setDragPosition(
+          clampPosition({
+            left: startRef.current.left + dx,
+            top: startRef.current.top + dy,
+          }),
+        )
+      }
+
+      const finish = (ev: globalThis.PointerEvent) => {
+        if (ev.pointerId !== pointerId) {
+          return
+        }
+
+        window.removeEventListener('pointermove', onMove)
+        window.removeEventListener('pointerup', finish)
+        window.removeEventListener('pointercancel', finish)
+
+        if (dragMovedRef.current) {
+          const dx = ev.clientX - startRef.current.x
+          const dy = ev.clientY - startRef.current.y
+          setAnchor(
+            clampPosition({
+              left: startRef.current.left + dx,
+              top: startRef.current.top + dy,
+            }),
+          )
+          setDragPosition(null)
+          setDragging(false)
+          return
+        }
+
+        setDragging(false)
+        onClick()
+      }
+
+      window.addEventListener('pointermove', onMove)
+      window.addEventListener('pointerup', finish)
+      window.addEventListener('pointercancel', finish)
     },
-    [],
+    [anchor.left, anchor.top, onClick, setAnchor],
   )
 
-  const positionStyle = getTriggerPositionStyle(anchor)
+  const displayPosition = dragPosition ?? anchor
+  const positionStyle = getTriggerPositionStyle(displayPosition)
 
   const style: CSSProperties = {
     ...positionStyle,
@@ -123,9 +143,6 @@ export const FloatingTrigger = ({
       aria-label={open ? messages.triggerClose : messages.triggerOpen}
       title={messages.triggerDragHint}
       onPointerDown={onPointerDown}
-      onPointerMove={onPointerMove}
-      onPointerUp={onPointerUp}
-      onPointerCancel={onPointerCancel}
       style={style}
     >
       {open ? (
